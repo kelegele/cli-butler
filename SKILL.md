@@ -18,6 +18,16 @@ Agent skill for managing local CLI tools. Status: **v0.1.0 stable** (see `docs/R
 | `bin/refchain.sh` | Five-layer reference chain: symlink → channel → PATH lines → launchd → configs; last-used |
 | `bin/cap.sh` | Enumerate a CLI's subcommands from its help output |
 
+## Presenting results to humans
+
+Raw output is grouped by **channel** (that is the management view — it decides
+upgrade/uninstall routing and safety). When answering a user's "what do I have"
+question, re-present grouped by **function/purpose** (AI agents, containers,
+mobile dev, languages, web/network, media, version control, self-written
+scripts, library dependencies, system-bundled), with the channel shown as a
+per-item attribute — e.g. `docker (brew)`. Users think in purposes, not in
+package managers.
+
 ## Safety rules (non-negotiable)
 
 1. **Never `rm` a binary owned by a package manager.** Always route through the owning channel (`brew uninstall`, `npm uninstall -g`, …). Direct deletion corrupts the channel's database.
