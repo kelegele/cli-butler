@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC1091,SC2016  # sibling source resolved at runtime; dpkg -f format strings stay literal
+# shellcheck disable=SC1091,SC2016,SC2153  # sibling-source vars; dpkg -f fmt & word-split name list stay literal
 # cli-butler channel library: per-channel enumerate/describe/route + ownership resolution.
 # Enumerations and prefixes are cached per-run in eval-globals (bash 3.2: no assoc arrays).
 # shellcheck disable=SC2034  # ENUM_*/CASK_*/PFX_* globals are built via eval indirection
@@ -84,13 +84,21 @@ _is_cask() { # <name> -> true if brew cask (direct probe; route ops are rare)
     | LC_ALL=C awk -v n="$1" 'NF >= 2 && $1==n{f=1} END{exit !f}'
 }
 
-channel_desc() { # <id> <name> -> one-line description, "" if unknown. Local queries only.
-  local id="$1" name="$2" d="" root
+channel_desc() { # <id> <name> -> one-line description via stdout, "" if unknown.
+  # Local queries only (no network). Reads the bulk desc cache DESC_ALL_brew
+  # warmed in the main shell by channel_desc_bulk.
+  local id="$1" name="$2" d="" root all
   case "$id" in
-    brew) d=$(probe 10 brew desc "$name" 2>/dev/null | sed -n 's/^[^:]*:[[:space:]]*//p' | head -1) ;;
+    brew)
+      eval "all=\"\${DESC_ALL_brew:-}\""
+      if [ -n "$all" ]; then
+        # bulk format "name: desc"; no regex so names stay literal
+        d=$(printf '%s\n' "$all" | LC_ALL=C awk -v n="$name" '
+          index($0, n ": ") == 1 && length($0) > length(n) + 2 { print substr($0, length(n) + 3); exit }')
+      else
+        d=$(probe 10 brew desc "$name" 2>/dev/null | sed -n 's/^[^:]*:[[:space:]]*//p' | head -1)
+      fi ;;
     npm|pnpm)
-      # channel_prefixes is eval-cached (PFX_$id, warmed by callers in the main
-      # shell) — probing per row would pay the full timeout for slow channels
       out=$(channel_prefixes "$id") || out=""
       if [ -n "$out" ]; then
         if [ "$id" = npm ]; then root="$out/lib/node_modules"; else root="${out##* }"; fi
@@ -100,8 +108,24 @@ channel_desc() { # <id> <name> -> one-line description, "" if unknown. Local que
     gem) d=$(probe 10 gem specification "$name" description 2>/dev/null | head -1) ;;
     apt) d=$(probe 10 dpkg-query -W -f='${Summary}\n' "$name" 2>/dev/null | head -1) ;;
   esac
-  if [ -z "$d" ]; then d=$(whatis_desc "$name"); fi
+  # whatis fallback lives in the caller (main shell) so the whatis budget and
+  # name cache survive across rows; channel_desc just prints its own sources
   printf '%s' "$d"
+}
+
+# One-shot desc prefetch per channel (main shell). brew desc per-name costs
+# ~1s on real installs (150+ rows -> minutes); one bulk call returns all.
+channel_desc_bulk() { # <id>: fills DESC_ALL_<id>, "" on skip/failure
+  local id="$1" enum names out
+  eval "DESC_ALL_$id=\"\""
+  [ "$id" = "brew" ] || return 0
+  eval "enum=\"\${ENUM_brew:-}\""
+  [ -n "$enum" ] || return 0
+  names=$(printf '%s\n' "$enum" | awk -F'\t' '{ printf "%s ", $1 }')
+  [ -n "$names" ] || return 0
+  # shellcheck disable=SC2086  # space-joined name list
+  out=$(probe 120 brew desc $names 2>/dev/null)
+  eval "DESC_ALL_brew=\$out"
 }
 
 channel_prefixes() { # <id> -> space-separated install prefixes for realpath ownership
@@ -160,7 +184,8 @@ _resolve_owner_ret() { # <name> <path> -> sets OWNER="channel|category"; order p
   fi
   # rule4: journal (JNAMES_CACHE = prewarmed name list; empty cache skips grep)
   if [ -n "${JNAMES_CACHE+x}" ]; then
-    if [ -n "$JNAMES_CACHE" ] && printf '%s\n' "$JNAMES_CACHE" | grep -qxF -- "$name"; then
+    # zero-fork exact match (names are LF-delimited)
+    if [ -n "$JNAMES_CACHE" ] && case "$LF$JNAMES_CACHE$LF" in *"$LF$name$LF"*) true ;; *) false ;; esac; then
       OWNER="manual|manual"; return 0
     fi
   elif [ -n "$(journal_get "$name")" ]; then

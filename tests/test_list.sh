@@ -54,6 +54,23 @@ lt=$(row loose-tool "$kv")
 t_contains "unjournaled loose binary untracked" "category=untracked" "$lt"
 t_contains "whatis fallback desc" "desc=a loose test tool" "$lt"
 
+tp=$(row tool-plain "$kv")
+t_contains "second untracked fixture present" "category=untracked" "$tp"
+
+# whatis budget 0: fallback disabled -> desc-sourced rows keep desc, others empty
+kv3=$(env PATH="$FAKE_PATH:$FIXTURES/prefix/systembin" \
+  BUTLER_LIST_PATH="$FAKE_BIN:$FIXTURES/prefix/systembin" BUTLER_OS_OVERRIDE=Darwin \
+  BUTLER_SYSTEM_PREFIXES="$FIXTURES/prefix/systembin" BUTLER_JOURNAL_DIR="$JDIR" \
+  BUTLER_WHATIS_BUDGET=0 bash "$REPO_ROOT/bin/list.sh" --kv)
+lt3=$(row loose-tool "$kv3")
+d3="${lt3##*desc=}"; d3="${d3//[[:space:]]/}"
+t_eq "budget 0: whatis fallback desc exactly empty" "" "$d3"
+cs3=$(row cowsay "$kv3")
+t_contains "budget 0: bulk desc sources unaffected" "desc=Configurable talking cow" "$cs3"
+tp3=$(row tool-plain "$kv3")
+d3="${tp3##*desc=}"; d3="${d3//[[:space:]]/}"
+t_eq "budget 0: tool-plain desc exactly empty" "" "$d3"
+
 # journal loose-tool -> becomes manual
 journal_add loose-tool manual "$(date +%s)" test "hand placed"
 kv2=$(LIST_RUN)

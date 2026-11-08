@@ -32,7 +32,7 @@ LF=$'\n'
 ROWS="" # name\tversion\tchannel\tcategory\tpath\tsize\tdesc
 SEEN="" # newline-separated names already emitted
 
-seen_has() { printf '%s' "$SEEN" | grep -qxF -- "$1"; }
+seen_has() { case "$LF$SEEN$LF" in *"$LF$1$LF"*) return 0 ;; esac; return 1; } # zero-fork exact match
 seen_add() { SEEN="$SEEN$1$LF"; }
 
 humanize_size() { # bytes -> "1.2M" style; empty input -> "-" (pure bash: fork-free)
@@ -49,8 +49,10 @@ add_row() { # <name> <version> <channel> <category> <path>
   local n="$1" v="$2" ch="$3" cat="$4" p="$5" sz desc
   seen_has "$n" && return 0
   seen_add "$n"
-  if [ "$cat" = "managed" ]; then desc=$(channel_desc "$ch" "$n")
-  else desc=$(whatis_desc "$n"); fi
+  # channel_desc runs in a subshell (printf API); the whatis fallback must stay
+  # in the main shell so the whatis budget/name cache survive across rows
+  if [ "$cat" = "managed" ]; then desc=$(channel_desc "$ch" "$n"); fi
+  if [ -z "$desc" ]; then whatis_desc "$n"; desc=$WHW_RET; fi
   sz="-"
   if [ "$p" != "-" ]; then sz=$(humanize_size "$(du_size "$p")"); fi
   ROWS="$ROWS$n${TAB}$v${TAB}$ch${TAB}$cat${TAB}$p${TAB}$sz${TAB}$desc$LF"
@@ -67,6 +69,7 @@ done
 for pair in $CHANNELS; do
   id="${pair%%:*}"
   channel_prefixes "$id" >/dev/null 2>&1 || true
+  channel_desc_bulk "$id" >/dev/null 2>&1 || true
 done
 for pair in $CHANNELS; do
   id="${pair%%:*}"

@@ -34,7 +34,7 @@ t_eq "gem apostrophe preserved" "The best way to manage your application's depen
   "$(PATH="$FAKE_PATH" bash -c '. lib/channels.sh; channel_desc gem bundler')"
 t_eq "apt dpkg summary" "command line tool for transferring data with URLs" \
   "$(PATH="$FAKE_PATH" bash -c '. lib/channels.sh; channel_desc apt curl')"
-t_eq "uv falls back to whatis" "an in-process SQL OLAP database management system" \
+t_eq "uv has no channel desc source (whatis fallback lives in add_row)" "" \
   "$(PATH="$FAKE_PATH" bash -c '. lib/channels.sh; channel_desc uv duckdb')"
 t_eq "unknown falls back empty" "" \
   "$(PATH="$FAKE_PATH" bash -c '. lib/channels.sh; channel_desc uv neverseen')"

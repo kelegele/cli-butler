@@ -41,9 +41,24 @@ probe() { # probe <timeout_s> <cmd...>; BUTLER_PROBE_TIMEOUT overrides (tests)
   return 0
 }
 
-whatis_desc() { # <name> -> one-line man description via local whatis db (no network)
-  probe 5 whatis "$1" 2>/dev/null \
-    | LC_ALL=C awk -F' - ' 'NF >= 2 { print $2; exit }'
+# shellcheck disable=SC2034  # consumed by bin/list.sh and lib/channels.sh via source
+WHW_RET="" # whatis_desc main-shell result (cache AW_$n + budget need main shell)
+whatis_desc() { # <name> -> sets WHW_RET; one-line man description, local db only
+  # cached (AW_$name) and budgeted: whatis costs ~1s/name on macOS, so callers
+  # must NOT wrap this in command substitution (cache/counter would be lost)
+  local n="$1" key cached d
+  WHW_RET=""
+  # eval-global keys must be valid identifiers (@, -, /, dots are common in names)
+  key="${n//_/__}"; key="${key//[^A-Za-z0-9_]/_Q}"
+  eval "cached=\"\${AW_$key+x}\""
+  if [ -n "$cached" ]; then eval "WHW_RET=\"\${AW_$key}\""; return 0; fi
+  [ -n "${WHATIS_LEFT:-}" ] || WHATIS_LEFT="${BUTLER_WHATIS_BUDGET:-20}"
+  [ "$WHATIS_LEFT" -gt 0 ] || return 0
+  WHATIS_LEFT=$((WHATIS_LEFT - 1))
+  d=$(probe 5 whatis "$n" 2>/dev/null | LC_ALL=C awk -F' - ' 'NF >= 2 { print $2; exit }')
+  eval "AW_$key=\$d"
+  # shellcheck disable=SC2034  # consumed by callers in the same shell
+  WHW_RET="$d"
 }
 
 # Channels in probe order; each entry "id|probe-cmd".
@@ -58,16 +73,31 @@ is_darwin() {
 }
 
 realpath_safe() { # <path> -> absolute resolved path; falls back to input
-  local p="$1" out cur="$1" n=0 target dir
-  if out=$(readlink -f -- "$p" 2>/dev/null) && [ -n "$out" ]; then printf '%s\n' "$out"; return 0; fi
-  # BSD readlink lacks -f: resolve leaf symlinks iteratively
+  # canonical dirs are memoized per-run (DIRC_*): the scan feeds thousands of
+  # candidates and cd+pwd per candidate is measurable; keys are bash-native
+  local p="$1" out cur dir base key cached n=0 target
+  case "$p" in
+    /*) cur="$p" ;;
+    *) cur=$(cd -- "$(dirname -- "$p")" 2>/dev/null && pwd -P) || { printf '%s\n' "$p"; return 0; }
+       cur="$cur/$(basename -- "$p")" ;;
+  esac
   while [ -L "$cur" ] && [ "$n" -lt 40 ]; do
     target=$(readlink -- "$cur") || break
     case "$target" in /*) cur="$target" ;; *) cur="$(dirname -- "$cur")/$target" ;; esac
     n=$((n + 1))
   done
-  dir=$(cd -- "$(dirname -- "$cur")" 2>/dev/null && pwd -P) || { printf '%s\n' "$p"; return 0; }
-  printf '%s/%s\n' "$dir" "$(basename -- "$cur")"
+  dir=${cur%/*}; [ -n "$dir" ] || dir=/  # candidates are absolute; no fork
+  base=${cur##*/}
+  # eval-global keys must be valid identifiers: escape specials bash-natively
+  key="${dir//_/__}"; key="${key//\//_S}"; key="${key//./_D}"; key="${key// /_P}"; key="${key//-/_M}"
+  eval "cached=\"\${DIRC_$key+x}\""
+  if [ -n "${cached:-}" ]; then
+    eval "out=\"\${DIRC_$key}\""
+  else
+    out=$(cd -- "$dir" 2>/dev/null && pwd -P) || { printf '%s\n' "$p"; return 0; }
+    eval "DIRC_$key=\$out"
+  fi
+  printf '%s\n' "$out/$base"
 }
 
 is_system_path() { # <abs-path>; darwin-only SIP prefixes (see provenance.md)
