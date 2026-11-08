@@ -46,7 +46,7 @@ humanize_size() { # bytes -> "1.2M" style; empty input -> "-" (pure bash: fork-f
 }
 
 add_row() { # <name> <version> <channel> <category> <path>
-  local n="$1" v="$2" ch="$3" cat="$4" p="$5" sz desc
+  local n="$1" v="$2" ch="$3" cat="$4" p="$5" sz="" desc=""
   seen_has "$n" && return 0
   seen_add "$n"
   # channel_desc runs in a subshell (printf API); the whatis fallback must stay
