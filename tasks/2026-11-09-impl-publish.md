@@ -29,8 +29,9 @@
   - 教训：layer3 匹配目录要用原始 path 的 dir（${p%/*}），chain walk 后 cur 已漂移到 realpath 目录；测试文件自带 JDIR 后必须重 source common.sh（JOURNAL 在 source 时定死）；macOS awk 对多字节垃圾历史内容会 towc 崩——hist_last_used 已加 LC_ALL=C
 - [x] T7 F6 cap
   - commit be84368；tests 47/47；真机 cap git：usage 行 + clone/init/add… 子命令表提取 ✓
-- [ ] T8 F3 install（进行中）
-- [ ] T9 F4 uninstall
+- [x] T8 F3 install
+  - commit 540964e；tests 47/47；真机验证留待 T11 统一做（dry-run 全矩阵）
+- [ ] T9 F4 uninstall（进行中）
 - [ ] T10 F2 manage
 - [ ] T11 验收加固
 - [ ] T12 发布
