@@ -4,7 +4,7 @@
 
 ## Why
 
-Agents are great at installing tools and terrible at cleaning up after themselves. cli-butler makes provenance a first-class concept: every CLI belongs to exactly one **channel** (brew / npm / pipx / uv / cargo / gem / apt / manual), and the channel decides how it is installed, upgraded, and — critically — uninstalled. No more `rm`-ing brew-owned binaries or leaving launchd services half-disabled.
+Agents are great at installing tools and terrible at cleaning up after themselves. cli-butler makes provenance a first-class concept: every CLI belongs to exactly one **channel** (brew / npm / pipx / uv / cargo / gem / apt / manual / system), and the channel decides how it is installed, upgraded, and — critically — uninstalled. No more `rm`-ing brew-owned binaries or leaving launchd services half-disabled.
 
 ## Status
 

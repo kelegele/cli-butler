@@ -25,8 +25,16 @@ brew | npm -g | pnpm -g | pipx | uv tool | cargo | gem | apt(dnf/pacman) | manua
 
 ## 功能（六项，实现顺序 F1→F5→F6→F3→F4→F2）
 
-### F1 list — CLI 列表
-逐渠道枚举：`brew list --formula/-cask`、`npm ls -g --depth=0`、`pipx list`、`uv tool list`、`cargo install --list`、`gem list`、`apt --installed`（抽样）、PATH 上无主二进制。按二进制名去重合并：版本、渠道、路径、占用（du）。输出人读表格 + key=value 机器行。
+### F1 list — CLI 列表（分组盘点）
+逐渠道枚举：`brew list --formula/-cask`、`npm ls -g --depth=0`、`pipx list`、`uv tool list`、`cargo install --list`、`gem list`、`apt --installed`（抽样）、PATH 上无主二进制。按二进制名去重合并：版本、渠道、路径、占用（du）。
+
+**分组输出**：按渠道分组（brew / npm -g / … / system / manual），组头含渠道一句话说明与包数，让用户知道哪个组有什么 CLI、每个 CLI 是干嘛的；manual 组细分 `manual`（journal 有账）与 `untracked`（无主）。
+
+**用途（desc）**：每个 CLI 附一句话用途，只做本地查询：渠道原生元数据优先（`brew desc`、全局 node_modules 的 package.json description、dpkg Summary、`gem list -d` 等），缺失回退 `whatis`；禁止逐包联网，查不到留空。
+
+**system 组（系统自带）**：macOS SIP 保护前缀（`/usr/bin` `/bin` `/sbin` `/usr/sbin`）下的 CLI 单列 system 组，显式标注「系统自带，不可卸载」；Linux 下这些路径通常由发行版包管理器管理，归对应渠道，不进 system 组（口径见 provenance.md）。
+
+输出：人读分组表格 + key=value 机器行（字段含 `category=managed|manual|untracked|system`、`desc=`）。
 
 ### F5 refchain — 引用链
 `refchain <cli>` 输出五层：
@@ -48,6 +56,7 @@ brew | npm -g | pnpm -g | pipx | uv tool | cargo | gem | apt(dnf/pacman) | manua
 路由归属渠道卸载；manual 项走 refchain 检查 → **默认 dry-run** → 显式确认 → 删除 + 残留清扫（dotfiles、launchd plist、软链）。
 
 红线：
+- **system（系统自带）项一律拒绝卸载**：直接说明不可卸载及原因（SIP/系统完整性），不进 dry-run 流程。
 - **绝不对渠道管理的二进制直接 `rm`**——必须经归属渠道卸载。
 - launchd 服务停用：须挪走 plist（而非只 `launchctl bootout`，bootout 只注销当前会话——dsh 教训）。
 - app 内嵌软链（OrbStack 型，如 /usr/local/bin/docker → app 内 docker-tools）：只备份挪链（`.bak`），不删本体。

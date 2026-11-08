@@ -15,13 +15,15 @@
 | gem | `gem list`（只报可执行 gem， binstubs 抽查） | `gem update <name>` | `gem uninstall <name>` |
 | apt/dnf/pacman | 包管理器 query | 渠道对应 upgrade | 渠道对应 remove |
 | manual | PATH 上二进制 ∉ 上述任何渠道输出 + journal 有记录 | 重新执行安装来源 | refchain 检查 → dry-run → 确认后删 |
+| system（系统自带） | PATH ∩ 系统前缀（仅 darwin：`/usr/bin` `/bin` `/sbin` `/usr/sbin`，SIP 保护） | 无（只读盘点） | **无（不可卸载）** |
 
 ## 归属判定顺序
 
 1. 二进制 realpath 落在渠道前缀内（如 `/opt/homebrew/Cellar`、nvm/pipx/cargo bin 目录）→ 直判。
-2. 渠道查询输出含该名 → 归该渠道。
-3. journal 有记录 → manual。
-4. 其余 → manual（未记账），标记 `untracked`。
+2. realpath 落在系统前缀（仅 darwin：`/usr/bin` `/bin` `/sbin` `/usr/sbin`，SIP 保护）→ `system`；Linux 上这些路径归发行版渠道判定，不特判。
+3. 渠道查询输出含该名 → 归该渠道。
+4. journal 有记录 → manual。
+5. 其余 → manual（未记账），标记 `untracked`。
 
 ## Journal（manual 记账）
 
@@ -30,6 +32,7 @@
 
 ## 已知陷阱（编码为检查规则）
 
+- system（系统自带）CLI **永不卸载**：SIP 保护本就删不掉，卸载请求直接拒绝并说明原因。
 - 渠道管理的二进制**永不直接 rm**（残骸会让渠道数据库失真，升级/卸载双双报错）。
 - launchd 停用只 `launchctl bootout` 不够（只注销当前会话），必须挪走 plist 并留档。
 - app 内嵌软链（OrbStack 型）：本体在 .app 内，删链不删本体；挪链备份为 `.bak`。

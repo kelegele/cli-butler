@@ -28,6 +28,7 @@
 - **provenance 口径**：每个 CLI 归属恰好一个渠道；渠道是装/卸/升级唯一路由，禁止绕渠道直接 rm（细节见 `docs/provenance.md`）。
 - journal：`~/.config/cli-butler/journal.tsv`（可用 `BUTLER_JOURNAL_DIR` 环境变量重定向，测试必须重定向）。
 - 需求变更只改 `docs/REQUIREMENTS.md` 并在此文件登记一行变更记录；SKILL.md/README 同步。
+- 2026-11-09 需求补充：F1 list 增加按渠道分组输出与每 CLI 一句话用途（desc，仅本地采集，禁逐包联网）；新增 `system` 分类（macOS SIP 系统自带 CLI 单列分组、显式标注不可卸载，F4 直接拒绝）。已同步 REQUIREMENTS / provenance / SKILL / README。
 
 ## 4. 已产出清单
 
@@ -36,7 +37,7 @@
 
 ## 5. 可继续方向（实现顺序 F1→F5→F6→F3→F4→F2）
 
-1. **F1 list**：逐渠道枚举（命令清单见 provenance.md 渠道表）+ PATH 无主二进制 + 合并去重；对数本机真实数据（docker=OrbStack 软链、node/nvm、dsh 残留 .off plist、homebrew 包）。
+1. **F1 list**：逐渠道枚举（命令清单见 provenance.md 渠道表）+ PATH 无主二进制 + 合并去重 + 分组输出（组头渠道说明）+ desc 本地采集 + system 组标注；对数本机真实数据（docker=OrbStack 软链、node/nvm、dsh 残留 .off plist、homebrew 包、/usr/bin 系统自带）。
 2. **F5 refchain**：五层输出 + zsh 历史 epoch 判活（mtime 不可信）；用 /usr/local/bin/docker 软链链与 ai.deepseek.dsh.web.plist.off 验证。
 3. **F6 cap**：--help/-h/help 试探 + 顶层子命令提取。
 4. **F3 install**：OS/渠道探测 → 路由 → journal 回写；代理检测（webget 在列时用之）；npm prefix 核对防劫持。

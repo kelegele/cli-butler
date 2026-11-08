@@ -11,7 +11,7 @@ Agent skill for managing local CLI tools. Status: **skeleton — implementation 
 
 | Command | What it does |
 |---------|--------------|
-| `bin/list.sh` | Inventory every CLI: name, version, channel, path |
+| `bin/list.sh` | Inventory every CLI grouped by channel, each with a one-line description; system-bundled CLIs get their own group marked non-uninstallable |
 | `bin/manage.sh` | `info <cli>` / `outdated` / `upgrade <cli>` |
 | `bin/install.sh` | Install via the right channel, record provenance |
 | `bin/uninstall.sh` | Channel-routed uninstall; manual items go through refchain + dry-run + confirm |
@@ -25,6 +25,7 @@ Agent skill for managing local CLI tools. Status: **skeleton — implementation 
 3. **launchd services are disabled by moving the plist away** (e.g. to `.plist.off`), never by `launchctl bootout` alone — bootout only unregisters the current session; the service returns on next login.
 4. **App-embedded symlinks** (e.g. `/usr/local/bin/docker` → inside an .app): move the symlink aside (`.bak`), never delete the app's internals.
 5. Single channel probe failures never block the whole inventory; report them, don't guess.
+6. **System-bundled CLIs are never uninstalled.** Anything under macOS SIP-protected prefixes (`/usr/bin`, `/bin`, `/sbin`, `/usr/sbin`) is listed but refused on uninstall, with the reason stated.
 
 ## Design docs
 
