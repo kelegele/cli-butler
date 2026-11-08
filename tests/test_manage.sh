@@ -13,7 +13,7 @@ logsz() { [ -f "$1" ] && wc -c < "$1" | tr -d ' ' || echo 0; }
 mg_run() { # <extra-env> args...
   local extra="$1"; shift
   env PATH="$FAKE_PATH" BUTLER_JOURNAL_DIR="$JDIR" BUTLER_OS_OVERRIDE=Darwin \
-    BUTLER_FAKE_INSTALL_LOG="$LOG" HOME="$FIXTURES/home" $extra bash "$REPO_ROOT/bin/manage.sh" "$@"
+    BUTLER_FAKE_INSTALL_LOG="$LOG" BUTLER_LAUNCHD_DIRS="$FIXTURES/home/LaunchAgents" $extra bash "$REPO_ROOT/bin/manage.sh" "$@"
 }
 
 # info: path/owner/size/launchd refs (reuses refchain output)
