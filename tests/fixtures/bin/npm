@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# fake npm — read-only fixture views; `view` exits 64 (network is forbidden in list/desc paths).
+set -u
+DATA="$(cd "$(dirname "$0")/../data" && pwd)"
+c1="${1:-}"; c2="${2:-}"; c3="${3:-}"
+case "$c1 $c2 $c3" in
+  "ls -g --depth=0") cat "$DATA/npm-ls.txt" ;;
+  "prefix -g") echo "$DATA/../prefix" ;;
+  *) exit 64 ;;
+esac

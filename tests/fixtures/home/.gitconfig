@@ -1,0 +1,4 @@
+[alias]
+	co = checkout
+[credential "https://example.com"]
+	helper = !loose-tool credential-helper

@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# fake brew — serves fixture data; unknown invocations exit 64 (misuse).
+set -u
+DATA="$(cd "$(dirname "$0")/../data" && pwd)"
+c1="${1:-}"; c2="${2:-}"; c3="${3:-}"
+case "$c1 $c2" in
+  "list --formula") cat "$DATA/brew-formula.txt" ;;
+  "list --cask") cat "$DATA/brew-cask.txt" ;;
+  *)
+    case "$c1 $c2 $c3" in
+      "list --versions"*) v=$(awk -v n="$c4" '$1==n{print $2}' "$DATA/brew-versions.txt")
+        [ -n "$v" ] && printf '%s %s\n' "$c4" "$v" || exit 1 ;;
+      "desc"*) d=$(awk -F': ' -v n="$c2" '$1==n{print $2}' "$DATA/brew-desc.txt")
+        [ -n "$d" ] && printf '%s: %s\n' "$c2" "$d" || exit 1 ;;
+      *) exit 64 ;;
+    esac ;;
+esac
