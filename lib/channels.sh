@@ -1,0 +1,197 @@
+#!/usr/bin/env bash
+# cli-butler channel library: per-channel enumerate/describe/route + ownership resolution.
+# Enumerations and prefixes are cached per-run in eval-globals (bash 3.2: no assoc arrays).
+# shellcheck disable=SC2034  # ENUM_*/CASK_*/PFX_* globals are built via eval indirection
+
+. "$(dirname "${BASH_SOURCE[0]}")/common.sh"
+
+# map channel id -> probe/query binary
+channel_bin() {
+  case "$1" in
+    brew) printf 'brew\n' ;;
+    npm) printf 'npm\n' ;;
+    pnpm) printf 'pnpm\n' ;;
+    pipx) printf 'pipx\n' ;;
+    uv) printf 'uv\n' ;;
+    cargo) printf 'cargo\n' ;;
+    gem) printf 'gem\n' ;;
+    apt) printf 'dpkg-query\n' ;;
+    *) return 1 ;;
+  esac
+}
+
+channel_available() {
+  local b
+  b=$(channel_bin "$1") || return 1
+  have "$b"
+}
+
+# --- per-channel probes: emit "name<TAB>version" lines ---
+
+_enum_namever() { # whitespace "name version" lines (strip tree glyph prefixes, C locale byte-wise)
+  LC_ALL=C awk '{ v=$NF; $NF=""; line=$0
+    sub(/^[^A-Za-z@\/]*/, "", line); sub(/ +$/, "", line)
+    if (v != "" && line != "") printf "%s\t%s\n", line, v }'
+}
+
+_probe_brew() {
+  local f c
+  f=$(probe 15 brew list --versions)
+  c=$(probe 15 brew list --cask --versions)
+  printf '%s\n%s\n' "$f" "$c" | LC_ALL=C awk 'NF >= 2 { printf "%s\t%s\n", $1, $2 }'
+}
+
+_probe_npm() {
+  probe 20 npm ls -g --depth=0 | LC_ALL=C awk '{
+    line=$0; sub(/^[^A-Za-z@\/]*/, "", line)
+    if (match(line, /@[^@]*$/)) {
+      name=substr(line, 1, RSTART - 1); v=substr(line, RSTART + 1)
+      if (name != "npm" && name != "" && v ~ /^[0-9]/) printf "%s\t%s\n", name, v } }'
+}
+
+_probe_pnpm() { probe 20 pnpm ls -g --depth=0 | _enum_namever; }
+
+_probe_pipx() { probe 15 pipx list --short | _enum_namever; }
+
+_probe_uv() { probe 15 uv tool list | _enum_namever; }
+
+_probe_cargo() { probe 15 cargo install --list | LC_ALL=C awk 'NF >= 2 {
+  v=$2; sub(/^v/, "", v); sub(/:$/, "", v); printf "%s\t%s\n", $1, v }'; }
+
+_probe_gem() { probe 15 gem list | LC_ALL=C sed -E 's/^(.*) \(([0-9][^)]*)\)$/\1\t\2/'; }
+
+_probe_apt() { probe 15 dpkg-query -W -f='${db:Status-Abbrev}|${binary:Package}|${Version}\n' \
+    | LC_ALL=C awk -F'|' '$1 ~ /^ii/ { name=$1; sub(/^i+ */, "", name)
+      if (name != "") printf "%s\t%s\n", name, $2 }'; }
+
+channel_enumerate() { # <id> -> "name<TAB>version" lines; cached per-run
+  local id="$1" out
+  case "$id" in brew|npm|pnpm|pipx|uv|cargo|gem|apt) ;; *) return 1 ;; esac
+  eval "out=\"\${ENUM_$id:-}\""
+  if [ -z "$out" ]; then
+    channel_available "$id" || return 1
+    out=$("_probe_$id")
+    eval "ENUM_$id=\$out"
+  fi
+  [ -n "$out" ] && printf '%s\n' "$out"
+  return 0
+}
+
+_is_cask() { # <name> -> true if brew cask (direct probe; route ops are rare)
+  channel_available brew || return 1
+  probe 15 brew list --cask --versions 2>/dev/null \
+    | LC_ALL=C awk -v n="$1" 'NF >= 2 && $1==n{f=1} END{exit !f}'
+}
+
+channel_desc() { # <id> <name> -> one-line description, "" if unknown. Local queries only.
+  local id="$1" name="$2" d="" root
+  case "$id" in
+    brew) d=$(probe 10 brew desc "$name" 2>/dev/null | sed -n 's/^[^:]*:[[:space:]]*//p' | head -1) ;;
+    npm|pnpm)
+      if [ "$id" = npm ]; then root=$(probe 10 npm prefix -g 2>/dev/null)/lib/node_modules
+      else root=$(probe 10 pnpm root -g 2>/dev/null); fi
+      [ -n "$root" ] && d=$(sed -n 's/.*"description"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+        "$root/$name/package.json" 2>/dev/null | head -1) ;;
+    gem) d=$(probe 10 gem specification "$name" description 2>/dev/null | head -1) ;;
+    apt) d=$(probe 10 dpkg-query -W -f='${Summary}\n' "$name" 2>/dev/null | head -1) ;;
+  esac
+  if [ -z "$d" ]; then
+    d=$(probe 10 whatis "$name" 2>/dev/null | grep -v 'nothing appropriate' | head -1 \
+      | sed -E 's/^[^(]*\([^)]*\)[[:space:]]*-?[[:space:]]*//')
+  fi
+  printf '%s' "$d"
+}
+
+channel_prefixes() { # <id> -> space-separated install prefixes for realpath ownership
+  local id="$1" out p
+  eval "out=\"\${PFX_$id:-MISSING}\""
+  if [ "$out" = "MISSING" ]; then
+    case "$id" in
+      brew) out="/opt/homebrew /usr/local/Cellar /usr/local/Caskroom" ;;
+      npm) out=$(probe 10 npm prefix -g 2>/dev/null) ;;
+      pnpm) p=$(probe 10 pnpm root -g 2>/dev/null) && out="$(dirname "$p") $p" || out="" ;;
+      pipx) out="${PIPX_HOME:-$HOME/.local/pipx}/venvs $HOME/.local/bin" ;;
+      uv) p=$(probe 10 uv tool dir 2>/dev/null) && out="$p $HOME/.local/bin" || out="$HOME/.local/bin" ;;
+      cargo) out="$HOME/.cargo/bin" ;;
+      *) out="" ;;
+    esac
+    eval "PFX_$id=\$out"
+  fi
+  printf '%s\n' "$out"
+}
+
+resolve_owner() { # <name> <path> -> "channel|category"; order per provenance.md
+  local name="$1" path="$2" rp id pre pair out
+  rp=$(realpath_safe "$path")
+  for id in brew npm pnpm pipx uv cargo; do
+    for pre in $(channel_prefixes "$id"); do
+      [ -n "$pre" ] || continue
+      case "$rp" in "$pre"|"$pre"/*) printf '%s|managed\n' "$id"; return 0 ;; esac
+    done
+  done
+  if is_system_path "$rp"; then printf 'system|system\n'; return 0; fi
+  if have dpkg-query && out=$(probe 10 dpkg-query -S "$rp" 2>/dev/null) && [ -n "$out" ]; then
+    printf 'apt|managed\n'; return 0
+  fi
+  for pair in $CHANNELS; do
+    id="${pair%%:*}"
+    if channel_enumerate "$id" 2>/dev/null \
+      | LC_ALL=C awk -F'\t' -v n="$name" '$1==n{f=1} END{exit !f}'; then
+      printf '%s|managed\n' "$id"; return 0
+    fi
+  done
+  if [ -n "$(journal_get "$name")" ]; then printf 'manual|manual\n'; return 0; fi
+  printf 'manual|untracked\n'
+}
+
+# --- route builders: emit command strings, never execute ---
+
+_route_flags() { # brew cask flag helper
+  channel_enumerate brew >/dev/null 2>&1
+  if _is_cask "$2"; then printf -- '--cask '; fi
+}
+
+channel_uninstall_cmd() { # <id> <name> -> full command string
+  local id="$1" name="$2" f
+  case "$id" in
+    brew) f=$(_route_flags "$id" "$name"); printf 'brew uninstall %s%s\n' "$f" "$name" ;;
+    npm) printf 'npm uninstall -g %s\n' "$name" ;;
+    pnpm) printf 'pnpm remove -g %s\n' "$name" ;;
+    pipx) printf 'pipx uninstall %s\n' "$name" ;;
+    uv) printf 'uv tool uninstall %s\n' "$name" ;;
+    cargo) printf 'cargo uninstall %s\n' "$name" ;;
+    gem) printf 'gem uninstall %s\n' "$name" ;;
+    apt) printf 'apt-get remove -y %s\n' "$name" ;;
+    *) return 1 ;;
+  esac
+}
+
+channel_upgrade_cmd() {
+  local id="$1" name="$2" f
+  case "$id" in
+    brew) f=$(_route_flags "$id" "$name"); printf 'brew upgrade %s%s\n' "$f" "$name" ;;
+    npm) printf 'npm install -g %s@latest\n' "$name" ;;
+    pnpm) printf 'pnpm update -g %s\n' "$name" ;;
+    pipx) printf 'pipx upgrade %s\n' "$name" ;;
+    uv) printf 'uv tool upgrade %s\n' "$name" ;;
+    cargo) printf 'cargo install %s\n' "$name" ;;
+    gem) printf 'gem update %s\n' "$name" ;;
+    apt) printf 'apt-get install -y %s\n' "$name" ;;
+    *) return 1 ;;
+  esac
+}
+
+channel_install_cmd() {
+  local id="$1" name="$2" f
+  case "$id" in
+    brew) f=$(_route_flags "$id" "$name"); printf 'brew install %s%s\n' "$f" "$name" ;;
+    npm) printf 'npm install -g %s\n' "$name" ;;
+    pnpm) printf 'pnpm add -g %s\n' "$name" ;;
+    pipx) printf 'pipx install %s\n' "$name" ;;
+    uv) printf 'uv tool install %s\n' "$name" ;;
+    cargo) printf 'cargo install %s\n' "$name" ;;
+    gem) printf 'gem install %s\n' "$name" ;;
+    apt) printf 'apt-get install -y %s\n' "$name" ;;
+    *) return 1 ;;
+  esac
+}
