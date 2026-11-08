@@ -21,10 +21,28 @@ EOF
 have() { command -v "$1" >/dev/null 2>&1; }
 
 # Run a probe command with a timeout so one slow channel can't block listing.
-probe() { # probe <timeout_s> <cmd...>
-  local t="$1"; shift
-  if have timeout; then timeout "$t" "$@" 2>/dev/null
-  else "$@" 2>/dev/null; fi
+probe() { # probe <timeout_s> <cmd...>; BUTLER_PROBE_TIMEOUT overrides (tests)
+  # portable watchdog (macOS lacks coreutils timeout). Capture goes through a
+  # temp FILE, not a pipe: a killed command can leave orphaned children holding
+  # the capture pipe open, and command substitutions would block on their EOF.
+  local t="$1" pid w; shift
+  [ -n "${BUTLER_PROBE_TIMEOUT:-}" ] && t="$BUTLER_PROBE_TIMEOUT"
+  [ -n "${PROBE_TMP:-}" ] || PROBE_TMP="${TMPDIR:-/tmp}/butler-probe.$$"
+  : >"$PROBE_TMP"
+  "$@" >"$PROBE_TMP" 2>/dev/null &
+  pid=$!
+  { sleep "$t" && kill "$pid" 2>/dev/null; } >/dev/null 2>&1 &
+  w=$!
+  wait "$pid" 2>/dev/null
+  kill "$w" 2>/dev/null
+  wait "$w" 2>/dev/null
+  cat "$PROBE_TMP"
+  return 0
+}
+
+whatis_desc() { # <name> -> one-line man description via local whatis db (no network)
+  probe 5 whatis "$1" 2>/dev/null \
+    | LC_ALL=C awk -F' - ' 'NF >= 2 { print $2; exit }'
 }
 
 # Channels in probe order; each entry "id|probe-cmd".
@@ -67,11 +85,15 @@ kv_field() { # <k> <v> -> sanitized "k=v" + trailing TAB (values must never brea
   printf '%s=%s\t' "$1" "$v"
 }
 
-du_size() { # <path> -> bytes, or "-"
-  local p="$1"
-  if [ -f "$p" ]; then wc -c < "$p" | tr -d ' '; return 0; fi
-  if [ -d "$p" ]; then du -sk "$p" 2>/dev/null | awk '{print $1 * 1024}'; return 0; fi
-  printf -- '-\n'
+du_size() { # <path> -> bytes (follows symlinks); dirs via du -sk; missing -> "-"
+  local p="$1" s="-"
+  if [ -f "$p" ]; then
+    s=$(wc -c < "$p" 2>/dev/null) && s=${s//[[:space:]]/} || s="-"
+  elif [ -d "$p" ]; then
+    s=$(du -sk "$p" 2>/dev/null) && s=$(( ${s%%[[:space:]]*} * 1024 )) || s="-"
+  fi
+  [ -n "$s" ] || s="-"
+  printf '%s' "$s"
 }
 
 hist_last_used() { # <name> -> max epoch from zsh-style history, or empty

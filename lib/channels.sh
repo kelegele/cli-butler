@@ -88,24 +88,27 @@ channel_desc() { # <id> <name> -> one-line description, "" if unknown. Local que
   case "$id" in
     brew) d=$(probe 10 brew desc "$name" 2>/dev/null | sed -n 's/^[^:]*:[[:space:]]*//p' | head -1) ;;
     npm|pnpm)
-      if [ "$id" = npm ]; then root=$(probe 10 npm prefix -g 2>/dev/null)/lib/node_modules
-      else root=$(probe 10 pnpm root -g 2>/dev/null); fi
-      [ -n "$root" ] && d=$(sed -n 's/.*"description"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
-        "$root/$name/package.json" 2>/dev/null | head -1) ;;
+      # channel_prefixes is eval-cached (PFX_$id, warmed by callers in the main
+      # shell) — probing per row would pay the full timeout for slow channels
+      out=$(channel_prefixes "$id") || out=""
+      if [ -n "$out" ]; then
+        if [ "$id" = npm ]; then root="$out/lib/node_modules"; else root="${out##* }"; fi
+        d=$(sed -n 's/.*"description"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+          "$root/$name/package.json" 2>/dev/null | head -1)
+      fi ;;
     gem) d=$(probe 10 gem specification "$name" description 2>/dev/null | head -1) ;;
     apt) d=$(probe 10 dpkg-query -W -f='${Summary}\n' "$name" 2>/dev/null | head -1) ;;
   esac
-  if [ -z "$d" ]; then
-    d=$(probe 10 whatis "$name" 2>/dev/null | grep -v 'nothing appropriate' | head -1 \
-      | sed -E 's/^[^(]*\([^)]*\)[[:space:]]*-?[[:space:]]*//')
-  fi
+  if [ -z "$d" ]; then d=$(whatis_desc "$name"); fi
   printf '%s' "$d"
 }
 
 channel_prefixes() { # <id> -> space-separated install prefixes for realpath ownership
-  local id="$1" out p
-  eval "out=\"\${PFX_$id:-MISSING}\""
-  if [ "$out" = "MISSING" ]; then
+  # Cache sentinel must be +x (set vs unset), NOT :-MISSING: a failed probe
+  # caches "" and :- treats empty as unset, re-probing on every call.
+  local id="$1" out p cached
+  eval "cached=\"\${PFX_$id+x}\""
+  if [ -z "$cached" ]; then
     case "$id" in
       brew) out="/opt/homebrew /usr/local/Cellar /usr/local/Caskroom" ;;
       npm) out=$(probe 10 npm prefix -g 2>/dev/null) ;;
@@ -116,32 +119,58 @@ channel_prefixes() { # <id> -> space-separated install prefixes for realpath own
       *) out="" ;;
     esac
     eval "PFX_$id=\$out"
+  else
+    eval "out=\"\${PFX_$id}\""
   fi
   printf '%s\n' "$out"
 }
 
-resolve_owner() { # <name> <path> -> "channel|category"; order per provenance.md
-  local name="$1" path="$2" rp id pre pair out
+_resolve_owner_ret() { # <name> <path> -> sets OWNER="channel|category"; order per provenance.md
+  # must run in the caller's shell: channel/prefix caches live in shell vars
+  local name="$1" path="$2" rp id pre pre_list pair out ch
+  OWNER=""
   rp=$(realpath_safe "$path")
+  # rule1: channel install prefixes (PFX_$id eval-cached; no per-call forks)
   for id in brew npm pnpm pipx uv cargo; do
-    for pre in $(channel_prefixes "$id"); do
+    channel_prefixes "$id" >/dev/null 2>&1 || continue
+    eval "pre_list=\${PFX_$id:-}"
+    for pre in $pre_list; do
       [ -n "$pre" ] || continue
-      case "$rp" in "$pre"|"$pre"/*) printf '%s|managed\n' "$id"; return 0 ;; esac
+      case "$rp" in "$pre"|"$pre"/*) OWNER="$id|managed"; return 0 ;; esac
     done
   done
-  if is_system_path "$rp"; then printf 'system|system\n'; return 0; fi
+  if is_system_path "$rp"; then OWNER="system|system"; return 0; fi
   if have dpkg-query && out=$(probe 10 dpkg-query -S "$rp" 2>/dev/null) && [ -n "$out" ]; then
-    printf 'apt|managed\n'; return 0
+    OWNER="apt|managed"; return 0
   fi
-  for pair in $CHANNELS; do
-    id="${pair%%:*}"
-    if channel_enumerate "$id" 2>/dev/null \
-      | LC_ALL=C awk -F'\t' -v n="$name" '$1==n{f=1} END{exit !f}'; then
-      printf '%s|managed\n' "$id"; return 0
+  # rule3: caller-built name->channel index avoids re-enumerating per candidate
+  if [ -n "${OWNED_INDEX+x}" ]; then
+    ch=$(printf '%s\n' "$OWNED_INDEX" | LC_ALL=C awk -F'\t' -v n="$name" '$1==n{print $2; exit}')
+    [ -n "$ch" ] && { OWNER="$ch|managed"; return 0; }
+  else
+    for pair in $CHANNELS; do
+      id="${pair%%:*}"
+      channel_enumerate "$id" >/dev/null 2>&1 || continue
+      eval "out=\"\${ENUM_$id:-}\""
+      [ -n "$out" ] || continue
+      printf '%s\n' "$out" | LC_ALL=C awk -F'\t' -v n="$name" '$1==n{f=1} END{exit !f}' || continue
+      OWNER="$id|managed"; return 0
+    done
+  fi
+  # rule4: journal (JNAMES_CACHE = prewarmed name list; empty cache skips grep)
+  if [ -n "${JNAMES_CACHE+x}" ]; then
+    if [ -n "$JNAMES_CACHE" ] && printf '%s\n' "$JNAMES_CACHE" | grep -qxF -- "$name"; then
+      OWNER="manual|manual"; return 0
     fi
-  done
-  if [ -n "$(journal_get "$name")" ]; then printf 'manual|manual\n'; return 0; fi
-  printf 'manual|untracked\n'
+  elif [ -n "$(journal_get "$name")" ]; then
+    OWNER="manual|manual"; return 0
+  fi
+  OWNER="manual|untracked"; return 0
+}
+
+resolve_owner() { # <name> <path> -> prints "channel|category" (also sets OWNER)
+  _resolve_owner_ret "$@"
+  printf '%s\n' "$OWNER"
 }
 
 # --- route builders: emit command strings, never execute ---
