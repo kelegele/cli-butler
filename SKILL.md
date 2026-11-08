@@ -5,7 +5,7 @@ description: Manage local CLI tools through any agent — inventory every instal
 
 # cli-butler
 
-Agent skill for managing local CLI tools. Status: **skeleton — implementation in progress** (see `docs/REQUIREMENTS.md`).
+Agent skill for managing local CLI tools. Status: **v0.1.0 stable** (see `docs/REQUIREMENTS.md`).
 
 ## Capabilities
 
