@@ -3,6 +3,7 @@
 # POSIX-ish bash; zero third-party deps. See docs/provenance.md for the model.
 
 set -u
+# shellcheck disable=SC1091  # sibling lib files are sourced at runtime
 
 BUTLER_VERSION="0.0.1"
 JOURNAL_DIR="${BUTLER_JOURNAL_DIR:-$HOME/.config/cli-butler}"
@@ -46,6 +47,7 @@ whatis_desc() { # <name> -> one-line man description via local whatis db (no net
 }
 
 # Channels in probe order; each entry "id|probe-cmd".
+# shellcheck disable=SC2034  # consumed by bin/* and lib/channels.sh via source
 CHANNELS="brew:brew npm:npm pnpm:pnpm pipx:pipx uv:uv cargo:cargo gem:gem apt:apt"
 
 # --- platform & path primitives (F1 foundation) ---

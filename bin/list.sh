@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1091  # sibling lib files are sourced at runtime
 # cli-butler list — grouped local CLI inventory (F1).
 # Merges per-channel enumerations with a PATH scan; classifies each binary as
 # managed / system / manual / untracked; collects one-line descriptions locally.
@@ -79,6 +80,7 @@ done
 if [ -f "$JOURNAL" ]; then
   JNAMES_CACHE=$(awk -F'\t' 'NF >= 2 { print $1 }' "$JOURNAL")
 else
+  # shellcheck disable=SC2034  # consumed by _resolve_owner_ret via channels.sh
   JNAMES_CACHE=""
 fi
 

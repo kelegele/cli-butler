@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1091  # sibling lib files are sourced at runtime
 # cli-butler F: manage — info/outdated/upgrade. Implementation pending, see docs/REQUIREMENTS.md.
 set -u
 case "$0" in */*) BIN_DIR=${0%/*} ;; *) BIN_DIR=. ;; esac # no dirname fork; works with PATH=/nonexistent

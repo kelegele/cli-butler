@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1091,SC2016  # sibling source resolved at runtime; dpkg -f format strings stay literal
 # cli-butler channel library: per-channel enumerate/describe/route + ownership resolution.
 # Enumerations and prefixes are cached per-run in eval-globals (bash 3.2: no assoc arrays).
 # shellcheck disable=SC2034  # ENUM_*/CASK_*/PFX_* globals are built via eval indirection
