@@ -31,11 +31,18 @@
   - commit be84368；tests 47/47；真机 cap git：usage 行 + clone/init/add… 子命令表提取 ✓
 - [x] T8 F3 install
   - commit 540964e；tests 47/47；真机验证留待 T11 统一做（dry-run 全矩阵）
-- [ ] T9 F4 uninstall（进行中）
-- [ ] T10 F2 manage
-- [ ] T11 验收加固
+- [x] T9 F4 uninstall（进行中）
+- [x] T10 F2 manage
+- [x] T11 验收加固
 - [ ] T12 发布
 
 ## 证据
 
-（随任务推进补）
+- Commits: 181dee1(T0) 2e689c4(T1) 4be4be1(T2) 6b4706a(T3) 41ea367(T4) 96dbd5c(T5 perf) bb6c99c(T6) be84368(T7) 540964e(T8) d9bcaa9(T9) 5d5f7a0+948ea70(T10) 380e5cc(T11)
+- tests: 79 passed / 0 failed；shellcheck bin/*.sh lib/*.sh tests/lib.sh rc=0
+- F1 真机（--kv 2208 行 139s）：docker brew|managed 70.6M desc 完整（OrbStack 软链）；node npm|managed（nvm）；rg manual|untracked（~/.kimi-code/bin）；分组 human 输出 brew(706)/system(1198)/untracked(233)
+- F5 真机：refchain docker 三跳软链链→docker-tools realpath ✓ last-used ✓；ai.deepseek.dsh.web.plist.off 存在（(disabled) 旗标由 fixture 测试覆盖）
+- F4 真机：uninstall docker → plan brew uninstall docker + dry-run 不执行；manual 临时项 --yes → 删除+journal 清+plist 挪 .off（fixture 覆盖）
+- F2/F3 真机：info git → system|system（SIP 拒绝路径）；upgrade docker → plan brew upgrade docker；install dry-run 由测试覆盖
+- outdated 真机：--channel brew rc=0（本机无过期项）；cargo → "not supported, not guessing" rc=1
+- CI：待 T12 发布后 gh run watch 确认
