@@ -27,8 +27,9 @@
   - 真机：docker 三跳软链链（/usr/local/bin/docker → OrbStack xbin/docker → docker-tools）、owner=brew|managed、last-used=1790066193 ✓；真机 ~/Library/LaunchAgents/ai.deepseek.dsh.web.plist.off 存在且 layer4 grep 机制命中 ✓（node 无 launchd 引用则不误报）
   - 夹具：refchain/bin l3→l2→l1→real/real-tool 三级软链；com.fake.brewsvc.plist 内容改为引用 loose-tool（原 brewsvc 引用对 refchain 用例无意义）；zsh_history 4 行含 l3/loose-tool epoch
   - 教训：layer3 匹配目录要用原始 path 的 dir（${p%/*}），chain walk 后 cur 已漂移到 realpath 目录；测试文件自带 JDIR 后必须重 source common.sh（JOURNAL 在 source 时定死）；macOS awk 对多字节垃圾历史内容会 towc 崩——hist_last_used 已加 LC_ALL=C
-- [ ] T7 F6 cap（进行中）
-- [ ] T8 F3 install
+- [x] T7 F6 cap
+  - commit be84368；tests 47/47；真机 cap git：usage 行 + clone/init/add… 子命令表提取 ✓
+- [ ] T8 F3 install（进行中）
 - [ ] T9 F4 uninstall
 - [ ] T10 F2 manage
 - [ ] T11 验收加固
