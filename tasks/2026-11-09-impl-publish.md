@@ -18,8 +18,11 @@
 - [ ] T2 common.sh 原语
 - [ ] T3 channels.sh
 - [ ] T4 F1 list
-- [ ] T5 F1 真机验证
-- [ ] T6 F5 refchain
+- [x] T5 F1 真机验证
+  - 真机 `bin/list.sh --kv`：rc=0，2209 行，113s；human 输出分组 brew(706)/npm(9)/pipx(12)/uv(2)/gem(12)/system(1198)/untracked(233)，空组自动跳过
+  - 性能改造三件：brew desc bulk 一次调用（原 151 包 × 1s）；whatis 预算（BUTLER_WHATIS_BUDGET，默认 20）+ AW_$name 缓存（key 需标识符消毒，@/-/点不可作变量名）；SEEN/JNAMES 用 case *"$LF$x$LF"* 零 fork 精确匹配（haystack 须 $LF 首尾垫护，$( ) 会剥尾 LF——曾致去重失效 3 连 fail）；realpath_safe 目录规范化 DIRC_ memo + basename/dirname 参数展开去 fork
+  - 教训：channel_desc 保持 printf API（测试 $( ) 消费），whatis 回退挪到 add_row 主 shell 层（BASHPID 探测子 shell 在 bash 3.2 不可用——无 BASHPID）；kv 行断言 ${x##*desc=} 会残留尾 TAB，先 ${x//[[:space:]]/}
+- [ ] T6 F5 refchain（进行中）
 - [ ] T7 F6 cap
 - [ ] T8 F3 install
 - [ ] T9 F4 uninstall

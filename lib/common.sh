@@ -132,7 +132,7 @@ hist_last_used() { # <name> -> max epoch from zsh-style history, or empty
   local f="${BUTLER_HIST_FILE:-${HISTFILE:-$HOME/.zsh_history}}" e
   [ -f "$f" ] || return 0
   # zsh extended format: ": <epoch>:0;cmd" (epoch 0 = no timestamp, skipped)
-  e=$(awk -F':|;' -v n="$1" '{
+  e=$(LC_ALL=C awk -F':|;' -v n="$1" '{
     e=$2 + 0
     if (e > 0) { line=$0; sub(/^[^;]*;/, "", line)
       if (line ~ "(^|[ /])" n "( |$)" && e > m) m=e }
