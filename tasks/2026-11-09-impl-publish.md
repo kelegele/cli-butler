@@ -3,7 +3,7 @@
 - **负责人**: 本会话（pi, kelegele）
 - **计划**: docs/superpowers/plans/2026-11-09-cli-butler-v0.1.md
 - **目标**: 六功能实现（F1→F5→F6→F3→F4→F2）→ 验收 → 发布 GitHub `kelegele/cli-butler`
-- **状态**: in-progress
+- **状态**: done — v0.1.0 已发布
 
 ## 预检结论（Task 0）
 
@@ -34,7 +34,7 @@
 - [x] T9 F4 uninstall（进行中）
 - [x] T10 F2 manage
 - [x] T11 验收加固
-- [ ] T12 发布
+- [x] T12 发布
 
 ## 证据
 
@@ -45,4 +45,7 @@
 - F4 真机：uninstall docker → plan brew uninstall docker + dry-run 不执行；manual 临时项 --yes → 删除+journal 清+plist 挪 .off（fixture 覆盖）
 - F2/F3 真机：info git → system|system（SIP 拒绝路径）；upgrade docker → plan brew upgrade docker；install dry-run 由测试覆盖
 - outdated 真机：--channel brew rc=0（本机无过期项）；cargo → "not supported, not guessing" rc=1
-- CI：待 T12 发布后 gh run watch 确认
+- CI：run 42533195840 success（Ubuntu shellcheck + 全测试）；期间修两个 Linux 兼容问题：tests/run.sh SC1091/SC2181、bin/list.sh local 变量未初始化（bash 5 set -u 报 unbound）
+- 发布：https://github.com/kelegele/cli-butler （public，topics: cli/agent-skills/package-manager/homebrew/bash）
+- Release: https://github.com/kelegele/cli-butler/releases/tag/v0.1.0 （tag v0.1.0）
+- skills.sh 解析验证：`npx skills add kelegele/cli-butler` 识别仓库并定位根目录 SKILL.md ✓

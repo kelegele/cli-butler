@@ -53,3 +53,14 @@
 - app 内嵌软链只备份挪链（`.bak`），不动 .app 内部。
 - 删除、force push、改共享配置等危险操作须先确认（全局 AGENTS.md 规则）。
 - 自动记录：钩子尚未接入具体 agent（用户未确认新会话用哪个），任务记录先手写 `tasks/` 目录（本 repo 暂无该目录，首个任务时建）。
+
+
+## 2026-11-09 v0.1.0 发布完成（本次会话终态）
+
+- 仓库已开源：https://github.com/kelegele/cli-butler （public，main @ 10d4d34 之后）
+- Release v0.1.0：https://github.com/kelegele/cli-butler/releases/tag/v0.1.0
+- 六命令全实现：list / install / uninstall / manage / refchain / cap；tests 79 绿（含 Ubuntu CI），shellcheck 0 警告
+- 发布前查重（终查）：npm E404 ✓ / GitHub 无同名 ✓ / skills.sh 无同名 ✓
+- 任务记录（含逐项验收证据）：tasks/2026-11-09-impl-publish.md
+- 坑位备忘：CI 会 shellcheck tests/run.sh（本地曾只查 bin/lib）；Linux bash 5 set -u 要求 local 变量显式初始化（macOS bash 3.2 不报）；gh 需 HTTPS_PROXY=$(webget --proxy-url)
+- 可继续方向：Linux SIP 等价体系（dpkg/rpm 系统目录）细化、outdated 扩展 pipx/uv/cargo、`npx skills add` 实装验证（已验证解析路径，未在本机实装避免污染 skill 目录）
