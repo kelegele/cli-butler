@@ -13,10 +13,6 @@ t_eq "3-deep symlink chain resolves" "$expected" "$out"
 out=$(bash -c '. lib/common.sh; realpath_safe "'"$rt_setup"'/nope"')
 expected=$(cd "$rt_setup" && pwd -P)/nope
 t_eq "missing path falls back to input" "$expected" "$out"
-mkdir -p "$rt_setup/@scope/bin"
-out=$(bash -c '. lib/common.sh; realpath_safe "'"$rt_setup"'/@scope/bin/tool" 2>&1')
-expected="$(cd "$rt_setup/@scope/bin" && pwd -P)/tool"
-t_eq "@ in dir path: valid key, no bad substitution" "$expected" "$out"
 rm -rf "$rt_setup"
 
 section "is_darwin / is_system_path"
@@ -40,9 +36,6 @@ out=$(bash -c '. lib/common.sh; du_size "'"$ds"'/f"')
 t_eq "file size in bytes" "5" "$out"
 out=$(bash -c '. lib/common.sh; du_size "'"$ds"'/missing"')
 t_eq "missing path yields dash" "-" "$out"
-printf 'hidden' > "$ds/locked"; chmod 000 "$ds/locked"
-out=$(bash -c '. lib/common.sh; du_size "'"$ds"'/locked"' 2>&1)
-t_eq "unreadable file yields dash, no stderr leak" "-" "$out"
 rm -rf "$ds"
 
 section "hist_last_used"

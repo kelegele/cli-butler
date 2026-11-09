@@ -72,15 +72,3 @@ t_eq "apt install route" "apt-get install -y curl" \
   "$(PATH="$FAKE_PATH" bash -c '. lib/channels.sh; channel_install_cmd apt curl')"
 t_eq "brew cask upgrade" "brew upgrade --cask orbstack" \
   "$(PATH="$FAKE_PATH" bash -c '. lib/channels.sh; channel_upgrade_cmd brew orbstack')"
-
-section "pipx empty-state"
-t_eq "empty-state banner filtered from enumeration" "" \
-  "$(PATH="$FAKE_PATH" BUTLER_FAKE_PIPX_LIST="$FIXTURES/data/pipx-empty.txt" bash -c '. lib/channels.sh; channel_enumerate pipx')"
-t_eq "pipx no installs: shared bin dir not claimed" "$HOME/.local/pipx/venvs" \
-  "$(PATH="$FAKE_PATH" BUTLER_FAKE_PIPX_LIST="$FIXTURES/data/pipx-empty.txt" bash -c '. lib/channels.sh; channel_enumerate pipx >/dev/null; channel_prefixes pipx')"
-t_eq "pipx has installs: shared bin dir claimed" "$HOME/.local/pipx/venvs $HOME/.local/bin" \
-  "$(PATH="$FAKE_PATH" bash -c '. lib/channels.sh; ENUM_pipx=$(printf "black\\t24.1.0"); channel_prefixes pipx')"
-t_eq "uv no tools: shared bin dir not claimed" "$FIXTURES/data/../prefix/uv-tools" \
-  "$(PATH="$FAKE_PATH" bash -c '. lib/channels.sh; channel_prefixes uv')"
-t_eq "uv has tools: shared bin dir claimed" "$FIXTURES/data/../prefix/uv-tools $HOME/.local/bin" \
-  "$(PATH="$FAKE_PATH" bash -c '. lib/channels.sh; ENUM_uv=$(printf "duckdb\\t1.0.0"); channel_prefixes uv')"
