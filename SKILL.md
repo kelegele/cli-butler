@@ -5,13 +5,13 @@ description: Manage local CLI tools through any agent — inventory every instal
 
 # cli-butler
 
-Agent skill for managing local CLI tools. Status: **v0.1.0 stable** (see `docs/REQUIREMENTS.md`).
+Agent skill for managing local CLI tools. Status: **v0.1.1 stable** (see `docs/REQUIREMENTS.md`).
 
 ## Capabilities
 
 | Command | What it does |
 |---------|--------------|
-| `bin/list.sh` | Inventory every CLI grouped by channel, each with a one-line description; system-bundled CLIs get their own group marked non-uninstallable |
+| `bin/list.sh` | Inventory every CLI grouped by channel, each with a one-line description; system-bundled CLIs get their own group marked non-uninstallable. `--by-function` re-groups by purpose (AI agents, mobile dev, containers, runtimes, web, media, VCS, libraries, system) with channel as a per-row attribute |
 | `bin/manage.sh` | `info <cli>` / `outdated` / `upgrade <cli>` |
 | `bin/install.sh` | Install via the right channel, record provenance |
 | `bin/uninstall.sh` | Channel-routed uninstall; manual items go through refchain + dry-run + confirm |

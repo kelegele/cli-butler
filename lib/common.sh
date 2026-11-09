@@ -5,7 +5,7 @@
 set -u
 # shellcheck disable=SC1091  # sibling lib files are sourced at runtime
 
-BUTLER_VERSION="0.1.0"
+BUTLER_VERSION="0.1.1"
 JOURNAL_DIR="${BUTLER_JOURNAL_DIR:-$HOME/.config/cli-butler}"
 JOURNAL="$JOURNAL_DIR/journal.tsv"
 

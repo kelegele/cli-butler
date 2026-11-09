@@ -8,7 +8,7 @@ Agents are great at installing tools and terrible at cleaning up after themselve
 
 ## Status
 
-✅ **v0.1.0** — all six commands implemented, POSIX bash, zero third-party dependencies, 79 tests green, shellcheck clean. macOS first (SIP-aware system detection); apt supported on Linux.
+✅ **v0.1.1** — all six commands implemented, POSIX bash, zero third-party dependencies, 79 tests green, shellcheck clean. macOS first (SIP-aware system detection); apt supported on Linux.
 
 - [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) — requirements (source of truth)
 - [docs/provenance.md](docs/provenance.md) — channel model & ownership resolution
@@ -24,6 +24,7 @@ npx skills add kelegele/cli-butler
 
 ```
 bin/list.sh                 # inventory all CLIs, grouped by channel with descriptions
+bin/list.sh --by-function   # same inventory, grouped by purpose (AI agents, mobile, containers...)
 bin/manage.sh info docker   # real path, symlink chain, owner, size, references
 bin/manage.sh outdated      # what's stale, per channel with native outdated support
 bin/manage.sh upgrade fd    # dry-run plan first; add --yes to execute

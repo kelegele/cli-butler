@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # tests for bin/list.sh (F1: grouped inventory)
-. "$(dirname "$0")/lib.sh"
 
 JDIR="$(mktemp -d "${TMPDIR:-/tmp}/butler-list.XXXXXX")"
 trap 'rm -rf "$JDIR"' EXIT
@@ -114,4 +113,3 @@ env PATH=/nonexistent BUTLER_OS_OVERRIDE=Darwin BUTLER_JOURNAL_DIR="$JDIR" \
   /bin/bash "$REPO_ROOT/bin/list.sh" --kv >/dev/null 2>&1
 t_ok "empty env exits 0" test "$?" -eq 0
 
-finish

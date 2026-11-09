@@ -7,6 +7,7 @@ set -u
 case "$0" in */*) BIN_DIR=${0%/*} ;; *) BIN_DIR=. ;; esac # no dirname fork; works with PATH=/nonexistent
 . "${BIN_DIR}/../lib/common.sh"
 . "${BIN_DIR}/../lib/channels.sh"
+. "${BIN_DIR}/../lib/function.sh"
 
 usage_list() {
   printf 'usage: cli-butler list [--kv] [--channel <id>]\n'
@@ -17,6 +18,7 @@ LIST_CHANNEL=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --kv) LIST_KV=1 ;;
+    --by-function) LIST_FUNC=1 ;;
     --channel) LIST_CHANNEL="${2:-}"; shift ;;
     -h|--help) usage_list; exit 0 ;;
     *) die 64 "list: unknown argument: $1" ;;
@@ -161,6 +163,77 @@ group_blurb() {
 }
 
 FILTERED=$(rows_for)
+
+if [ "${LIST_FUNC:-0}" -eq 1 ]; then
+  # function view: purpose groups, channel shown as a per-row attribute
+  FUNC_BUCKETS=""
+  FUNC_TEXT=""
+  while IFS=$'\t' read -r n v ch cat p sz desc; do
+    [ -n "$n" ] || continue
+    categorize "$cat" "$n" "$desc"
+    fc=$FUNC_CAT
+    case "$LF$FUNC_BUCKETS" in *"|$fc|"*) ;; *) FUNC_BUCKETS="$FUNC_BUCKETS|$fc|";; esac
+    FUNC_TEXT="$FUNC_TEXT$fc${TAB}$n${TAB}$v${TAB}$ch${TAB}$sz${TAB}$desc$LF"
+  done <<EOF
+$FILTERED
+EOF
+  FUNC_ORDER="AI / Agent 工具
+移动开发
+容器 / 基础设施
+版本控制
+库依赖
+Web / 网络
+多媒体
+语言运行时
+系统自带（SIP）
+其他独立工具"
+  while IFS='|' read -r g; do
+    [ -n "$g" ] || continue
+    case "$FUNC_BUCKETS" in *"|$g|"*) ;; *) continue;; esac
+    gcount=0; gtext=""
+    while IFS=$'\t' read -r fc n v ch sz desc; do
+      [ "$fc" = "$g" ] || continue
+      gcount=$((gcount + 1))
+      gtext="$gtext$n${TAB}$v${TAB}$ch${TAB}$sz${TAB}$desc$LF"
+    done <<EOF
+$FUNC_TEXT
+EOF
+    [ "$gcount" -gt 0 ] || continue
+    case "$g" in
+      "系统自带（SIP）") blurb="system-bundled (SIP-protected, NOT uninstallable)" ;;
+      "库依赖") blurb="libraries pulled in by the tools above" ;;
+      "其他独立工具") blurb="standalone tools outside the named categories" ;;
+      *) blurb="" ;;
+    esac
+    printf '== %s (%d)' "$g" "$gcount"
+    [ -n "$blurb" ] && printf ' - %s' "$blurb"
+    printf ' ==
+'
+    w1=4; w2=7; w3=6
+    while IFS=$'\t' read -r n v ch sz desc; do
+      [ -n "$n" ] || continue
+      [ "${#n}" -gt "$w1" ] && w1=${#n}
+      [ "${#v}" -gt "$w2" ] && w2=${#v}
+      [ "${#ch}" -gt "$w3" ] && w3=${#ch}
+    done <<EOF
+$gtext
+EOF
+    printf '%-*s  %-*s  %-*s  %-6s  %s
+' "$w1" NAME "$w2" VERSION "$w3" CH SIZE DESC
+    while IFS=$'\t' read -r n v ch sz desc; do
+      [ -n "$n" ] || continue
+      printf '%-*s  %-*s  %-*s  %-6s  %s
+' "$w1" "$n" "$w2" "$v" "$w3" "$ch" "$sz" "$desc"
+    done <<EOF
+$gtext
+EOF
+    echo ""
+  done <<EOF
+$FUNC_ORDER
+EOF
+  exit 0
+fi
+
 for g in brew npm pnpm pipx uv cargo gem apt system manual untracked; do
   gcount=0
   gtext=""
