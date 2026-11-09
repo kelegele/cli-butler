@@ -49,3 +49,10 @@
 - 发布：https://github.com/kelegele/cli-butler （public，topics: cli/agent-skills/package-manager/homebrew/bash）
 - Release: https://github.com/kelegele/cli-butler/releases/tag/v0.1.0 （tag v0.1.0）
 - skills.sh 解析验证：`npx skills add kelegele/cli-butler` 识别仓库并定位根目录 SKILL.md ✓
+
+## v0.1.1 — function-view inventory（2026-11-09 完成）
+- 需求：用户裁定渠道分组是管理视角，回答「装了什么」需按功能分类；做成确定性能力 `list --by-function`。
+- 实现：lib/function.sh（11 条关键词规则：AI/Agent、移动开发、容器、版本控制、库依赖、Web、多媒体、语言运行时 + 系统兜底 + 其他兜底）；bin/list.sh --by-function（组键=功能，渠道降为行属性；--kv 不变）。
+- 修复：tests/test_list.sh 重复 source lib.sh 导致 TESTS_PASS/FAIL 计数器复位，掩盖累计结果（真实总数 177，此前误报 79）；bin/list.sh usage 行补 --by-function；gpg-agent 测试 desc 含 ssh 误中 Web 规则（改 "agent protocol helper"）。
+- 证据：tests 177 passed / 0 failed；shellcheck clean；CI run 42538027848 绿；真机 --by-function：AI 62 / 移动 18 / 容器 10 / VCS 20 / 库 67 / Web 15 / 多媒体 29 / 运行时 67 / 系统 1198 / 其他 724（rc=0）。
+- 发布：release https://github.com/kelegele/cli-butler/releases/tag/v0.1.1 ；tag v0.1.1 已 push；~/.agents/skills/cli-butler 已 rsync 至 v0.1.1（非 git 副本，repo 更新后需手动重同步）。
