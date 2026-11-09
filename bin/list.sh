@@ -10,7 +10,7 @@ case "$0" in */*) BIN_DIR=${0%/*} ;; *) BIN_DIR=. ;; esac # no dirname fork; wor
 . "${BIN_DIR}/../lib/function.sh"
 
 usage_list() {
-  printf 'usage: cli-butler list [--kv] [--channel <id>]\n'
+  printf 'usage: cli-butler list [--kv] [--by-function] [--channel <id>]\n'
 }
 
 LIST_KV=0
