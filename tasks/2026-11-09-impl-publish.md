@@ -56,3 +56,8 @@
 - 修复：tests/test_list.sh 重复 source lib.sh 导致 TESTS_PASS/FAIL 计数器复位，掩盖累计结果（真实总数 177，此前误报 79）；bin/list.sh usage 行补 --by-function；gpg-agent 测试 desc 含 ssh 误中 Web 规则（改 "agent protocol helper"）。
 - 证据：tests 177 passed / 0 failed；shellcheck clean；CI run 42538027848 绿；真机 --by-function：AI 62 / 移动 18 / 容器 10 / VCS 20 / 库 67 / Web 15 / 多媒体 29 / 运行时 67 / 系统 1198 / 其他 724（rc=0）。
 - 发布：release https://github.com/kelegele/cli-butler/releases/tag/v0.1.1 ；tag v0.1.1 已 push；~/.agents/skills/cli-butler 已 rsync 至 v0.1.1（非 git 副本，repo 更新后需手动重同步）。
+
+## 边界修复采纳（2aa0ea5，2026-11-09）
+- 并行会话踩坑产出经审查后择优采纳（版本号 0.1.2 抬升已拒绝并回退）：pipx 空态 banner 过滤、~/.local/bin 共享目录仅在 pipx/uv 有实装时认领（修卸载路由误派）、realpath_safe 键补 @ 转义、du_size 不可读文件 stderr 消音、humanize_size "-" 入参。配套 7 条新断言，测试总数 184。
+- 真机证据：pipx 空态 banner 真实存在（"nothing has been installed with pipx 😴"）；webget 归 manual|untracked 而非误归 pipx。
+- 教训：多会话并行同一仓库时，未提交的越界改动先审查再定去留；对外语义（版本号/发布）必须经指令授权。
