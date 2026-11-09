@@ -37,8 +37,8 @@ SEEN="" # newline-separated names already emitted
 seen_has() { case "$LF$SEEN$LF" in *"$LF$1$LF"*) return 0 ;; esac; return 1; } # zero-fork exact match
 seen_add() { SEEN="$SEEN$1$LF"; }
 
-humanize_size() { # bytes -> "1.2M" style; empty input -> "-" (pure bash: fork-free)
-  [ -n "$1" ] || { printf -- '-'; return; }
+humanize_size() { # bytes -> "1.2M" style; empty or "-" input -> "-" (pure bash: fork-free)
+  case "$1" in ""|-) printf -- '-'; return ;; esac
   local b=$1 u r
   if [ "$b" -ge 1073741824 ]; then u=1073741824; r=G
   elif [ "$b" -ge 1048576 ]; then u=1048576; r=M

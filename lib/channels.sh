@@ -52,7 +52,7 @@ _probe_npm() {
 
 _probe_pnpm() { probe 20 pnpm ls -g --depth=0 | _enum_namever; }
 
-_probe_pipx() { probe 15 pipx list --short | _enum_namever; }
+_probe_pipx() { probe 15 pipx list --short | grep -v '^nothing has been installed' | _enum_namever; }
 
 _probe_uv() { probe 15 uv tool list | _enum_namever; }
 
@@ -138,10 +138,18 @@ channel_prefixes() { # <id> -> space-separated install prefixes for realpath own
       brew) out="/opt/homebrew /usr/local/Cellar /usr/local/Caskroom" ;;
       npm) out=$(probe 10 npm prefix -g 2>/dev/null) ;;
       pnpm) p=$(probe 10 pnpm root -g 2>/dev/null) && out="$(dirname "$p") $p" || out="" ;;
-      pipx) out="${PIPX_HOME:-$HOME/.local/pipx}/venvs $HOME/.local/bin" ;;
-      uv) p=$(probe 10 uv tool dir 2>/dev/null) && out="$p $HOME/.local/bin" || out="$HOME/.local/bin" ;;
+      pipx) out="${PIPX_HOME:-$HOME/.local/pipx}/venvs" ;;
+      uv) p=$(probe 10 uv tool dir 2>/dev/null) && out="$p" || out="" ;;
       cargo) out="$HOME/.cargo/bin" ;;
       *) out="" ;;
+    esac
+    # ~/.local/bin is a SHARED shim dir (pipx, uv tools, uv itself, strays):
+    # claim it only when the channel manages something, else an empty pipx
+    # misroutes every stray there to `pipx uninstall` (observed on real machine)
+    case "$id" in
+      pipx|uv)
+        eval "enum=\"\${ENUM_$id:-}\""
+        [ -n "$enum" ] && out="$out $HOME/.local/bin" ;;
     esac
     eval "PFX_$id=\$out"
   else
