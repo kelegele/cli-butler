@@ -88,8 +88,10 @@ realpath_safe() { # <path> -> absolute resolved path; falls back to input
   done
   dir=${cur%/*}; [ -n "$dir" ] || dir=/  # candidates are absolute; no fork
   base=${cur##*/}
-  # eval-global keys must be valid identifiers: escape specials bash-natively
+  # eval-global keys must be valid identifiers: escape specials bash-natively;
+  # @ appears in node_modules/@scope paths — unescaped it is a bad substitution
   key="${dir//_/__}"; key="${key//\//_S}"; key="${key//./_D}"; key="${key// /_P}"; key="${key//-/_M}"
+  key="${key//@/_AT}"; key="${key//[^A-Za-z0-9_]/_Q}" # _Q catch-all, same trade-off as whatis_desc
   eval "cached=\"\${DIRC_$key+x}\""
   if [ -n "${cached:-}" ]; then
     eval "out=\"\${DIRC_$key}\""
@@ -120,7 +122,9 @@ kv_field() { # <k> <v> -> sanitized "k=v" + trailing TAB (values must never brea
 du_size() { # <path> -> bytes (follows symlinks); dirs via du -sk; missing -> "-"
   local p="$1" s="-"
   if [ -f "$p" ]; then
-    s=$(wc -c < "$p" 2>/dev/null) && s=${s//[[:space:]]/} || s="-"
+    # group-level 2>/dev/null: an unopenable file (setuid binary under a sandbox)
+    # makes the SHELL report the failed < redirect, which wc's own 2> misses
+    s=$( { wc -c < "$p"; } 2>/dev/null) && s=${s//[[:space:]]/} || s="-"
   elif [ -d "$p" ]; then
     s=$(du -sk "$p" 2>/dev/null) && s=$(( ${s%%[[:space:]]*} * 1024 )) || s="-"
   fi

@@ -8,7 +8,7 @@ Agents are great at installing tools and terrible at cleaning up after themselve
 
 ## Status
 
-✅ **v0.1.1** — all six commands implemented, POSIX bash, zero third-party dependencies, 79 tests green, shellcheck clean. macOS first (SIP-aware system detection); apt supported on Linux.
+✅ **v0.1.1** — all six commands implemented, POSIX bash, zero third-party dependencies, 184 tests green, shellcheck clean. macOS first (SIP-aware system detection); apt supported on Linux.
 
 - [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) — requirements (source of truth)
 - [docs/provenance.md](docs/provenance.md) — channel model & ownership resolution
